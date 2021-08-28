@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 
@@ -32,7 +33,7 @@ import org.springframework.http.HttpHeaders;
 public abstract class BaseController {
 
     protected LocalDate parseDate(String date) {
-        return date != null ? LocalDate.parse(date) : LocalDate.now();
+        return StringUtils.isNotBlank(date) ? LocalDate.parse(date) : LocalDate.now();
     }
 
     protected void downloadFile(InputStream inputStream, String fileName, String contentType, long length, HttpServletResponse response) throws IOException {

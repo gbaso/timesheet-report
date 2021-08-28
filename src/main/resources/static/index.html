@@ -1,0 +1,23 @@
+<!DOCTYPE HTML>
+<html lang="en_US">
+<head>
+<title>Timesheet reporter for Jira issues</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+    <form action="/report">
+        <label for="file">File:</label>
+        <input type="file" id="file" name="file" required="true" accept="text/csv">
+        <br><br>
+        <label for="author">Author:</label>
+        <input type="text" id="author" name="author" required="true">
+        <br><br>
+        <label for="from">From:</label>
+        <input type="text" id="from" name="from">
+        <label for="to">To:</label>
+        <input type="text" id="to" name="to">
+        <br><br>
+        <input type="submit" value="Generate report" formmethod="post" formenctype="multipart/form-data">
+    </form>
+</body>
+</html>
