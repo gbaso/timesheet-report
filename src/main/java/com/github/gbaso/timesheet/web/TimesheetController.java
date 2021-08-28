@@ -55,7 +55,7 @@ public class TimesheetController extends BaseController {
         File report = timesheetService.generateReport(filePath, author, fromDate, toDate);
         if (report != null) {
             try (var inputStream = new FileInputStream(report)) {
-                inputStreamToResponse(inputStream, "TimePO User timesheet report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", report.length(), response);
+                downloadFile(inputStream, "TimePO User timesheet report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", report.length(), response);
             }
         }
     }

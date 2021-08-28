@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.io.IOUtils;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 
 /**
@@ -34,14 +35,15 @@ public abstract class BaseController {
         return date != null ? LocalDate.parse(date) : LocalDate.now();
     }
 
-    protected void inputStreamToResponse(InputStream inputStream, String fileName, String contentType, long length, HttpServletResponse response) throws IOException {
+    protected void downloadFile(InputStream inputStream, String fileName, String contentType, long length, HttpServletResponse response) throws IOException {
         response.setContentLengthLong(length);
-        inputStreamToResponse(inputStream, fileName, contentType, response);
+        downloadFile(inputStream, fileName, contentType, response);
     }
 
-    protected void inputStreamToResponse(InputStream inputStream, String fileName, String contentType, HttpServletResponse response) throws IOException {
+    protected void downloadFile(InputStream inputStream, String fileName, String contentType, HttpServletResponse response) throws IOException {
         response.setContentType(contentType);
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, String.format("attachment; filename=\"%s\"", fileName));
+        var disposition = ContentDisposition.attachment().filename(fileName).build();
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, disposition.toString());
         try (var outStream = response.getOutputStream()) {
             IOUtils.copy(inputStream, outStream);
         }
