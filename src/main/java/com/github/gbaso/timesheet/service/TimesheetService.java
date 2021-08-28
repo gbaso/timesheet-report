@@ -18,11 +18,11 @@ package com.github.gbaso.timesheet.service;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -56,16 +56,15 @@ public class TimesheetService {
     private static final int               MINUTES_PER_HOUR   = 60;
     private static final DateTimeFormatter DATE_FORMATTER     = DateTimeFormatter.ofPattern("EE dd/MM/yy");
 
-    public File generateReport(Path filePath, String author, LocalDate from, LocalDate to) throws IOException {
-        File worklogFile = filePath.toFile();
-        List<WorklogRow> rows = readWorklog(worklogFile, author, from, to);
+    public File generateReport(InputStream worklog, String author, LocalDate from, LocalDate to) throws IOException {
+        List<WorklogRow> rows = readWorklog(worklog, author, from, to);
         Map<String, Map<LocalDate, Integer>> reportMap = rows.stream()
                 .collect(Collectors.groupingBy(WorklogRow::getKey, Collectors.groupingBy(WorklogRow::getStarted, Collectors.reducing(0, this::toMinutes, Integer::sum))));
         return saveToFile(reportMap, author, from, to);
     }
 
-    private List<WorklogRow> readWorklog(File file, String author, LocalDate from, LocalDate to) throws IOException {
-        try (var reader = new FileReader(file, StandardCharsets.UTF_8)) {
+    private List<WorklogRow> readWorklog(InputStream worklog, String author, LocalDate from, LocalDate to) throws IOException {
+        try (var reader = new InputStreamReader(worklog, StandardCharsets.UTF_8)) {
             CsvToBeanBuilder<WorklogRow> beanBuilder = new CsvToBeanBuilder<>(reader);
             beanBuilder.withType(WorklogRow.class);
             CsvToBean<WorklogRow> build = beanBuilder.withFilter(lines -> StringUtils.isNotBlank(lines[2])).build();
