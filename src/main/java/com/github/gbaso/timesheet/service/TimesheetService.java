@@ -54,7 +54,9 @@ public class TimesheetService {
 
     private static final int               HOURS_PER_WORK_DAY = 8;
     private static final int               MINUTES_PER_HOUR   = 60;
-    private static final DateTimeFormatter DATE_FORMATTER     = DateTimeFormatter.ofPattern("EE dd/MM/yy");
+
+    private static final DateTimeFormatter dayOfWeekFormatter = DateTimeFormatter.ofPattern("EE");
+    private static final DateTimeFormatter dateFormatter      = DateTimeFormatter.ofPattern("dd/MM/yy");
 
     public File generateReport(InputStream worklog, String author, LocalDate from, LocalDate to) throws IOException {
         List<WorklogRow> rows = readWorklog(worklog, author, from, to);
@@ -120,6 +122,7 @@ public class TimesheetService {
         int rowNum = 0;
         addAuthorRow(sheet, rowNum++, author, bold);
         addTotalsRow(sheet, rowNum++, dates, totalByDate, bold);
+        addDayOfWeekRow(sheet, rowNum++, dates, bold);
         addHeadersRow(sheet, rowNum++, dates, bold);
         for (String key : keys) {
             addKeyRow(sheet, rowNum++, key, dates, reportMap.get(key), totalByKey.get(key));
@@ -153,6 +156,16 @@ public class TimesheetService {
         totalCell.setCellValue(formatMinutes(totalByDate.values().stream().reduce(0, Integer::sum)));
     }
 
+    private void addDayOfWeekRow(Sheet sheet, int rowNum, List<LocalDate> dates, CellStyle bold) {
+        int colNum = 1;
+        Row row = sheet.createRow(rowNum);
+        for (LocalDate date : dates) {
+            Cell cell = row.createCell(colNum++, CellType.STRING);
+            cell.setCellStyle(bold);
+            cell.setCellValue(dayOfWeekFormatter.format(date));
+        }
+    }
+
     private void addHeadersRow(Sheet sheet, int rowNum, List<LocalDate> dates, CellStyle bold) {
         int colNum = 0;
         Row row = sheet.createRow(rowNum);
@@ -162,7 +175,7 @@ public class TimesheetService {
         for (LocalDate date : dates) {
             Cell cell = row.createCell(colNum++, CellType.STRING);
             cell.setCellStyle(bold);
-            cell.setCellValue(DATE_FORMATTER.format(date));
+            cell.setCellValue(dateFormatter.format(date));
         }
         Cell totalCell = row.createCell(colNum, CellType.STRING);
         totalCell.setCellStyle(bold);
