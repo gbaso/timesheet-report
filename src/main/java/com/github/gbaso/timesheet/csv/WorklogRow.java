@@ -34,6 +34,8 @@ public class WorklogRow {
     private String    type;
     @CsvBindByName(column = "Key")
     private String    key;
+    @CsvBindByName(column = "Summary")
+    private String    summary;
     @PreAssignmentProcessor(processor = AddLeadingZeroToDateTimeStrings.class)
     @CsvDate("dd/MM/yyyy HH.mm.ss")
     @CsvBindByName(column = "Log Work.started")

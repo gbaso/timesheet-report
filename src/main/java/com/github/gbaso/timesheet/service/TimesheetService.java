@@ -60,16 +60,18 @@ public class TimesheetService {
 
     public File generateReport(InputStream worklog, String author, LocalDate from, LocalDate to) throws IOException {
         List<WorklogRow> rows = readWorklog(worklog, author, from, to);
+        record Issue(String key, String summary) {}
+        Map<String, String> summaryMap = rows.stream().map(r -> new Issue(r.getKey(), r.getSummary())).distinct().collect(Collectors.toMap(Issue::key, Issue::summary));
         Map<String, Map<LocalDate, Integer>> reportMap = rows.stream()
                 .collect(Collectors.groupingBy(WorklogRow::getKey, Collectors.groupingBy(WorklogRow::getStarted, Collectors.reducing(0, this::toMinutes, Integer::sum))));
-        return saveToFile(reportMap, author, from, to);
+        return saveToFile(reportMap, summaryMap, author, from, to);
     }
 
     private List<WorklogRow> readWorklog(InputStream worklog, String author, LocalDate from, LocalDate to) throws IOException {
         try (var reader = new InputStreamReader(worklog, StandardCharsets.UTF_8)) {
             CsvToBeanBuilder<WorklogRow> beanBuilder = new CsvToBeanBuilder<>(reader);
             beanBuilder.withType(WorklogRow.class);
-            CsvToBean<WorklogRow> build = beanBuilder.withFilter(lines -> StringUtils.isNotBlank(lines[2])).build();
+            CsvToBean<WorklogRow> build = beanBuilder.withFilter(lines -> StringUtils.isNotBlank(lines[3])).build();
             return build.stream().filter(r -> StringUtils.equals(r.getAuthor(), author)).filter(r -> between(r.getStarted(), from, to)).toList();
         }
     }
@@ -94,8 +96,8 @@ public class TimesheetService {
         }).sum();
     }
 
-    private File saveToFile(Map<String, Map<LocalDate, Integer>> reportMap, String author, LocalDate from, LocalDate to) throws IOException {
-        Workbook workbook = convertToWorkbook(reportMap, author, from, to);
+    private File saveToFile(Map<String, Map<LocalDate, Integer>> reportMap, Map<String, String> summaryMap, String author, LocalDate from, LocalDate to) throws IOException {
+        Workbook workbook = convertToWorkbook(reportMap, summaryMap, author, from, to);
         File tmpFile = Files.createTempFile(null, "xls").toFile();
         try (var os = new FileOutputStream(tmpFile)) {
             workbook.write(os);
@@ -103,7 +105,7 @@ public class TimesheetService {
         return tmpFile;
     }
 
-    private Workbook convertToWorkbook(Map<String, Map<LocalDate, Integer>> reportMap, String author, LocalDate from, LocalDate to) {
+    private Workbook convertToWorkbook(Map<String, Map<LocalDate, Integer>> reportMap, Map<String, String> summaryMap, String author, LocalDate from, LocalDate to) {
         Map<LocalDate, Integer> totalByDate = reportMap.values()
                 .stream()
                 .flatMap(map -> map.entrySet().stream())
@@ -125,7 +127,7 @@ public class TimesheetService {
         addDayOfWeekRow(sheet, rowNum++, dates, bold);
         addHeadersRow(sheet, rowNum++, dates, bold);
         for (String key : keys) {
-            addKeyRow(sheet, rowNum++, key, dates, reportMap.get(key), totalByKey.get(key));
+            addKeyRow(sheet, rowNum++, key, summaryMap.get(key), dates, reportMap.get(key), totalByKey.get(key));
         }
         addTotalsRow(sheet, rowNum, dates, totalByDate, bold);
         return workbook;
@@ -147,6 +149,7 @@ public class TimesheetService {
         Cell titleCell = row.createCell(colNum++, CellType.STRING);
         titleCell.setCellStyle(bold);
         titleCell.setCellValue("Total");
+        colNum++;
         for (LocalDate date : dates) {
             int minutes = totalByDate.getOrDefault(date, 0);
             Cell cell = row.createCell(colNum++, CellType.STRING);
@@ -157,7 +160,7 @@ public class TimesheetService {
     }
 
     private void addDayOfWeekRow(Sheet sheet, int rowNum, List<LocalDate> dates, CellStyle bold) {
-        int colNum = 1;
+        int colNum = 2;
         Row row = sheet.createRow(rowNum);
         for (LocalDate date : dates) {
             Cell cell = row.createCell(colNum++, CellType.STRING);
@@ -172,6 +175,9 @@ public class TimesheetService {
         Cell keyCell = row.createCell(colNum++, CellType.STRING);
         keyCell.setCellStyle(bold);
         keyCell.setCellValue("Issue");
+        Cell summaryCell = row.createCell(colNum++, CellType.STRING);
+        summaryCell.setCellStyle(bold);
+        summaryCell.setCellValue("Summary");
         for (LocalDate date : dates) {
             Cell cell = row.createCell(colNum++, CellType.STRING);
             cell.setCellStyle(bold);
@@ -182,11 +188,13 @@ public class TimesheetService {
         totalCell.setCellValue("Total");
     }
 
-    private void addKeyRow(Sheet sheet, int rowNum, String key, List<LocalDate> dates, Map<LocalDate, Integer> reportByKey, Integer total) {
+    private void addKeyRow(Sheet sheet, int rowNum, String key, String summary, List<LocalDate> dates, Map<LocalDate, Integer> reportByKey, Integer total) {
         int colNum = 0;
         Row row = sheet.createRow(rowNum);
         Cell keyCell = row.createCell(colNum++, CellType.STRING);
         keyCell.setCellValue(key);
+        Cell summaryCell = row.createCell(colNum++, CellType.STRING);
+        summaryCell.setCellValue(summary);
         for (LocalDate date : dates) {
             int minutes = reportByKey.getOrDefault(date, 0);
             Cell cell = row.createCell(colNum++, CellType.STRING);
