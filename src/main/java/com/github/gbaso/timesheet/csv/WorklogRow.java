@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package com.github.gbaso.timesheet.dto;
+package com.github.gbaso.timesheet.csv;
 
 import java.time.LocalDate;
 
 import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
+import com.opencsv.bean.processor.PreAssignmentProcessor;
 
 import lombok.Data;
 
@@ -33,6 +34,7 @@ public class WorklogRow {
     private String    type;
     @CsvBindByName(column = "Key")
     private String    key;
+    @PreAssignmentProcessor(processor = AddLeadingZeroToDateTimeStrings.class)
     @CsvDate("dd/MM/yyyy HH.mm.ss")
     @CsvBindByName(column = "Log Work.started")
     private LocalDate started;

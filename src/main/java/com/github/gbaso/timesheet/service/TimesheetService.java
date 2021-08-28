@@ -42,7 +42,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 
-import com.github.gbaso.timesheet.dto.WorklogRow;
+import com.github.gbaso.timesheet.csv.WorklogRow;
 import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
 
