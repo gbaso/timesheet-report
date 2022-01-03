@@ -45,4 +45,6 @@ public class WorklogRow {
     @CsvBindByName(column = "Log Work.authorDisplayName")
     private String    author;
 
+    private String    issueId;
+
 }

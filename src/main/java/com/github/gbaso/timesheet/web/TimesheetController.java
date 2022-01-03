@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.Set;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -45,13 +46,26 @@ public class TimesheetController extends BaseController {
 
     private final TimesheetService timesheetService;
 
-    @PostMapping(path = "/report", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public void post(@RequestParam MultipartFile file, @RequestParam String author, @RequestParam(required = false) String from, @RequestParam(required = false) String to,
+    @PostMapping(path = "/report-file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public void reportFromFile(@RequestParam MultipartFile file, @RequestParam String author, @RequestParam(required = false) String from, @RequestParam(required = false) String to,
             HttpServletResponse response) throws IOException {
         LocalDate fromDate = parseDate(from);
         LocalDate toDate = parseDate(to);
         Assert.isTrue(!fromDate.isAfter(toDate), "Invalid date interval: from " + from + " to " + to);
-        File report = timesheetService.generateReport(file.getInputStream(), author, fromDate, toDate);
+        File report = timesheetService.generateReportFromInputSteam(file.getInputStream(), author, fromDate, toDate);
+        if (report != null) {
+            try (var inputStream = new FileInputStream(report)) {
+                downloadFile(inputStream, "TimePO User timesheet report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", report.length(), response);
+            }
+        }
+    }
+
+    @PostMapping(path = "/report-api", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public void reportFromAPI(@RequestParam Set<String> projects, @RequestParam String author, @RequestParam(required = false) String from, @RequestParam(required = false) String to, HttpServletResponse response) throws IOException {
+        LocalDate fromDate = parseDate(from);
+        LocalDate toDate = parseDate(to);
+        Assert.isTrue(!fromDate.isAfter(toDate), "Invalid date interval: from " + from + " to " + to);
+        File report = timesheetService.generateReportFromAPI(projects, author, fromDate, toDate);
         if (report != null) {
             try (var inputStream = new FileInputStream(report)) {
                 downloadFile(inputStream, "TimePO User timesheet report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", report.length(), response);

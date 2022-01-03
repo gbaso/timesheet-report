@@ -25,7 +25,7 @@ public class SecurityConfig {
         return http.authorizeRequests(req -> req
                 .antMatchers("/", "/login-failure")
                 .permitAll()
-                .antMatchers("/upload.html", "/report")
+                .antMatchers("/report-file.html", "/report-file")
                 .permitAll()
                 .anyRequest()
                 .authenticated())
