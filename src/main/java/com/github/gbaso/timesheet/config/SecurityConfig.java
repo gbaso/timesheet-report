@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
@@ -24,6 +25,8 @@ public class SecurityConfig {
         return http.authorizeRequests(req -> req
                 .antMatchers("/", "/login-failure")
                 .permitAll()
+                .antMatchers("/upload.html", "/report")
+                .permitAll()
                 .anyRequest()
                 .authenticated())
                 .oauth2Login(oauth -> oauth
@@ -32,6 +35,7 @@ public class SecurityConfig {
                         .userInfoEndpoint(endpoint -> endpoint.userService(userService))
                         .defaultSuccessUrl("/login-success")
                         .failureUrl("/login-failure"))
+                .csrf(CsrfConfigurer::disable)
                 .build();
     }
 

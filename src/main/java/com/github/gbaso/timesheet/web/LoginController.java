@@ -36,7 +36,7 @@ public class LoginController {
     @GetMapping("/login-success")
     public String getLoginInfo(OAuth2AuthenticationToken token) {
         OAuth2AuthorizedClient client = authorizedClientService.loadAuthorizedClient(token.getAuthorizedClientRegistrationId(), token.getName());
-        log.debug("Jira access token: {}", client.getAccessToken().getTokenValue());
+        log.debug("Login with principal: {}", client.getPrincipalName());
         return "login-success";
     }
 
