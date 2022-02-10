@@ -22,12 +22,14 @@ import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvDate;
 import com.opencsv.bean.processor.PreAssignmentProcessor;
 
+import lombok.Builder;
 import lombok.Data;
 
 /**
  * @author Giacomo Baso
  */
 @Data
+@Builder
 public class WorklogRow {
 
     @CsvBindByName(column = "Issue Type")

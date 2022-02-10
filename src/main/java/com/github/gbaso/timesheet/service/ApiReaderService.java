@@ -7,19 +7,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClient.RequestBodySpec;
+import org.springframework.web.reactive.function.client.WebClient.RequestHeadersSpec;
 import org.springframework.web.util.UriBuilder;
 
 import com.github.gbaso.timesheet.csv.WorklogRow;
@@ -32,28 +29,26 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor
 public class ApiReaderService {
 
-    private static final ParameterizedTypeReference<Map<String, Object>> STRING_OBJECT_MAP = new ParameterizedTypeReference<>() {};
+    private String          cloudId;
 
-    private String                                                       cloudId;
+    private final WebClient webClient;
 
-    private final WebClient                                              webClient;
-
-    @SuppressWarnings("unchecked")
     public List<WorklogRow> readWorklog(Set<String> projects, String author, LocalDate from, LocalDate to) {
         List<Integer> worklogIds = getWorklogIds(from);
-        List<Map<String, Object>> worklogs = getWorklogs(worklogIds);
+        record Author(String displayName) {}
+        record Worklog(String started, String timeSpent, Author author, String issueId) {}
+        Function<UriBuilder, URI> uriFunction = uriBuilder -> uriBuilder
+                .path("/ex/jira/{cloudid}/rest/api/3/worklog/list")
+                .build(getCloudId());
+        RequestHeadersSpec<?> request = webClient.post().uri(uriFunction).bodyValue(Map.of("ids", worklogIds));
+        List<Worklog> worklogs = retrieve(request, Worklog.class).toStream().toList();
         List<WorklogRow> rows = worklogs.stream()
-                .map(map -> {
-                    var row = new WorklogRow();
-                    String started = (String) map.get("started");
-                    String startedDate = started.split("T")[0];
-                    row.setStarted(LocalDate.parse(startedDate));
-                    row.setTimeSpent((String) map.get("timeSpent"));
-                    Map<String, Object> authorProperty = (Map<String, Object>) map.get("author");
-                    row.setAuthor((String) authorProperty.get("displayName"));
-                    row.setIssueId((String) map.get("issueId"));
-                    return row;
-                })
+                .map(worklog -> WorklogRow.builder()
+                        .started(LocalDate.parse(worklog.started.split("T")[0]))
+                        .timeSpent(worklog.timeSpent)
+                        .author(worklog.author.displayName)
+                        .issueId(worklog.issueId)
+                        .build())
                 .filter(row -> StringUtils.equals(row.getAuthor(), author))
                 .filter(row -> TimeUtils.between(row.getStarted(), from, to))
                 .toList();
@@ -74,77 +69,61 @@ public class ApiReaderService {
                 .queryParam("since", TimeUtils.toEpochMillis(from))
                 .queryParam("expand", "issueId,started,timeSpent,author")
                 .build(getCloudId());
-        Map<String, Object> response = executeRequest(HttpMethod.GET, uriFunction).blockFirst();
-        Assert.notNull(response, "Cannot read worklogs");
-        @SuppressWarnings("unchecked")
-        var values = (List<Map<String, Object>>) response.get("values");
-        return values.stream().map(it -> (Integer) it.get("worklogId")).toList();
-    }
-
-    private List<Map<String, Object>> getWorklogs(List<Integer> worklogIds) {
-        Function<UriBuilder, URI> uriFunction = uriBuilder -> uriBuilder
-                .path("/ex/jira/{cloudid}/rest/api/3/worklog/list")
-                .build(getCloudId());
-        return executeRequest(HttpMethod.POST, uriFunction, Map.of("ids", worklogIds)).toStream().toList();
+        RequestHeadersSpec<?> request = webClient.get().uri(uriFunction);
+        record WorklogEntry(Integer worklogId) {}
+        record Worklogs(List<WorklogEntry> values) {}
+        Worklogs worklogs = retrieve(request, Worklogs.class).blockFirst();
+        Assert.notNull(worklogs, "Cannot read worklogs");
+        return worklogs.values.stream().map(WorklogEntry::worklogId).toList();
     }
 
     private Map<String, Issue> getIssues(Set<String> projects, Set<String> issueIds) {
-        List<Map<String, Object>> issues = new ArrayList<>();
+        record IssueType(String name) {}
+        record Fields(String summary, IssueType issuetype) {}
+        record ResultEntry(String id, String key, Fields fields) {}
+        record SearchResult(List<ResultEntry> issues) {}
+        List<ResultEntry> resultEntries = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
             Function<UriBuilder, URI> uriFunction = uriBuilder -> uriBuilder
                     .path("/ex/jira/{cloudid}/rest/api/3/search")
-                    .queryParam("startAt", issues.size())
+                    .queryParam("startAt", resultEntries.size())
                     .queryParam("jql", "project in ({projects}) and id in ({issueIds})")
                     .queryParam("fields", "summary,issuetype")
                     .build(getCloudId(), String.join(",", projects), String.join(",", issueIds));
-            Map<String, Object> response = executeRequest(HttpMethod.GET, uriFunction).blockFirst();
-            Assert.notNull(response, "Cannot read issues");
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> page = (List<Map<String, Object>>) response.get("issues");
-            if (page.isEmpty()) {
+            RequestHeadersSpec<?> request = webClient.get().uri(uriFunction);
+            var searchResult = retrieve(request, SearchResult.class).blockFirst();
+            Assert.notNull(searchResult, "Cannot read issues");
+            if (searchResult.issues.isEmpty()) {
                 break;
             }
-            issues.addAll(page);
+            resultEntries.addAll(searchResult.issues);
         }
-        return issues.stream()
-                .map(map -> Pair.of((String) map.get("id"), map))
-                .filter(p -> issueIds.contains(p.getKey()))
-                .collect(Collectors.toMap(Pair::getKey, p -> toIssue(p.getValue())));
-    }
-
-    @SuppressWarnings("unchecked")
-    private Issue toIssue(Map<String, Object> map) {
-        String key = (String) map.get("key");
-        Map<String, Object> fields = (Map<String, Object>) map.get("fields");
-        String summary = (String) fields.get("summary");
-        Map<String, Object> issuetype = (Map<String, Object>) fields.get("issuetype");
-        String type = (String) issuetype.get("name");
-        return new Issue(key, summary, type);
+        return resultEntries.stream()
+                .filter(e -> issueIds.contains(e.id))
+                .collect(Collectors.toMap(ResultEntry::id, e -> new Issue(e.key, e.fields.summary, e.fields.issuetype.name)));
     }
 
     private String getCloudId() {
         if (this.cloudId == null) {
-            Map<String, Object> resource = executeRequest(HttpMethod.GET, uriBuilder -> uriBuilder.path("/oauth/token/accessible-resources").build()).blockFirst();
+            RequestHeadersSpec<?> request = webClient.get().uri(uriBuilder -> uriBuilder.path("/oauth/token/accessible-resources").build());
+            record Resource(String id) {}
+            var resource = retrieve(request, Resource.class).blockFirst();
             Assert.notNull(resource, "Could not read accessile resources");
-            this.cloudId = (String) resource.get("id");
+            this.cloudId = resource.id;
         }
         return this.cloudId;
     }
 
-    Flux<Map<String, Object>> executeRequest(HttpMethod method, Function<UriBuilder, URI> uriFunction) {
-        return executeRequest(method, uriFunction, null);
+    <T> Flux<T> retrieve(RequestHeadersSpec<?> request, Class<T> responseClass) {
+        return retrieve(request, ParameterizedTypeReference.forType(responseClass));
     }
 
-    Flux<Map<String, Object>> executeRequest(HttpMethod method, Function<UriBuilder, URI> uriFunction, Object body) {
-        UnaryOperator<UriBuilder> host = uriBuilder -> uriBuilder.scheme("https").host("api.atlassian.com");
-        RequestBodySpec reqestHeaderSpec = webClient.method(method).uri(host.andThen(uriFunction));
-        if (body != null) {
-            reqestHeaderSpec.bodyValue(body);
-        }
-        return reqestHeaderSpec
+    <T> Flux<T> retrieve(RequestHeadersSpec<?> request, ParameterizedTypeReference<T> responseTypeRef) {
+        return request
                 .accept(MediaType.APPLICATION_JSON)
                 .attributes(ServletOAuth2AuthorizedClientExchangeFilterFunction.clientRegistrationId("jira"))
                 .retrieve()
-                .bodyToFlux(STRING_OBJECT_MAP);
+                .bodyToFlux(responseTypeRef);
     }
+
 }
