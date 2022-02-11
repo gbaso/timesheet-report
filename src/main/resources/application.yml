@@ -14,11 +14,11 @@ spring:
             scope:
             - read:jira-user
             - read:jira-work
-            redirect-uri: http://localhost:8080/login/oauth2/code/jira
+            redirect-uri: ${BASE_URL}/login/oauth2/code/jira
             authorization-grant-type: authorization_code
         provider:
           jira:
-            authorization-uri: https://auth.atlassian.com/authorize?audience=api.atlassian.com&prompt=consent
+            authorization-uri: https://auth.atlassian.com/authorize?audience=api.atlassian.com&prompt=no
             token-uri: https://auth.atlassian.com/oauth/token
 
 logging:

@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class LoginController {
 
-    private static final String                 CLIENT_AUTHORIZATION_PATH = "/oauth2/authorization";
+    private static final String                 CLIENT_AUTHORIZATION_PATH = "oauth2/authorization";
 
     private final OAuth2ClientProperties        properties;
     private final ClientRegistrationRepository  clientRegistrationRepository;
