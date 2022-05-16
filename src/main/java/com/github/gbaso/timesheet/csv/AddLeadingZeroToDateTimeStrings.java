@@ -18,17 +18,15 @@ package com.github.gbaso.timesheet.csv;
 
 import java.util.regex.Pattern;
 
-import com.opencsv.bean.processor.StringProcessor;
-
 /**
  * @author Giacomo Baso
  */
-public class AddLeadingZeroToDateTimeStrings implements StringProcessor {
+public class AddLeadingZeroToDateTimeStrings implements CSVRecordProcessor<String> {
 
     private static final Pattern singleDigitHour = Pattern.compile("\\d\\..+");
 
     @Override
-    public String processString(String value) {
+    public String process(String value) {
         String[] split = value.split(" ");
         String date = split[0];
         String time = split[1];
@@ -36,11 +34,6 @@ public class AddLeadingZeroToDateTimeStrings implements StringProcessor {
             return date + " 0" + time;
         }
         return value;
-    }
-
-    @Override
-    public void setParameterString(String value) {
-        // not needed
     }
 
 }

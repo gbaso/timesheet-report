@@ -2,3 +2,4 @@ Issue Type,Key,Summary,Log Work.started,Log Work.timeSpent,Log Work.authorDispla
 Bug,K1,Test 1,16/05/2022 14.09.30,30m,Giacomo Baso
 Task,K2,Test 2,16/05/2022 9.09.30,1h,Giacomo Baso
 Task,K3,Test 3,16/05/2022 19.09.30,1h,Tizio Caio
+Task,K4,Test 4,,1h,Giacomo Baso

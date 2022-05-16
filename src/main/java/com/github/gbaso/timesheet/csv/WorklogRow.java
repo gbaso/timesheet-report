@@ -18,9 +18,9 @@ package com.github.gbaso.timesheet.csv;
 
 import java.time.LocalDate;
 
-import com.opencsv.bean.CsvBindByName;
-import com.opencsv.bean.CsvDate;
-import com.opencsv.bean.processor.PreAssignmentProcessor;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -37,21 +37,21 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor(access = AccessLevel.PACKAGE)
 public class WorklogRow {
 
-    @CsvBindByName(column = "Issue Type")
+    @JsonProperty("Issue Type")
     private String    type;
-    @CsvBindByName(column = "Key")
+    @JsonProperty("Key")
     private String    key;
-    @CsvBindByName(column = "Summary")
+    @JsonProperty("Summary")
     private String    summary;
-    @PreAssignmentProcessor(processor = AddLeadingZeroToDateTimeStrings.class)
-    @CsvDate("dd/MM/yyyy HH.mm.ss")
-    @CsvBindByName(column = "Log Work.started")
+    @JsonDeserialize(using = LocalDateProcessorDeserializer.class)
+    @JsonProperty("Log Work.started")
     private LocalDate started;
-    @CsvBindByName(column = "Log Work.timeSpent")
+    @JsonProperty("Log Work.timeSpent")
     private String    timeSpent;
-    @CsvBindByName(column = "Log Work.authorDisplayName")
+    @JsonProperty("Log Work.authorDisplayName")
     private String    author;
 
+    @JsonIgnore
     private String    issueId;
 
 }
