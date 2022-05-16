@@ -18,38 +18,21 @@ package com.github.gbaso.timesheet.csv;
 
 import java.time.LocalDate;
 
-import com.opencsv.bean.CsvBindByName;
-import com.opencsv.bean.CsvDate;
-import com.opencsv.bean.processor.PreAssignmentProcessor;
-
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 /**
  * @author Giacomo Baso
  */
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor(access = AccessLevel.PACKAGE)
 public class WorklogRow {
 
-    @CsvBindByName(column = "Issue Type")
     private String    type;
-    @CsvBindByName(column = "Key")
     private String    key;
-    @CsvBindByName(column = "Summary")
     private String    summary;
-    @PreAssignmentProcessor(processor = AddLeadingZeroToDateTimeStrings.class)
-    @CsvDate("dd/MM/yyyy HH.mm.ss")
-    @CsvBindByName(column = "Log Work.started")
     private LocalDate started;
-    @CsvBindByName(column = "Log Work.timeSpent")
     private String    timeSpent;
-    @CsvBindByName(column = "Log Work.authorDisplayName")
     private String    author;
 
     private String    issueId;
