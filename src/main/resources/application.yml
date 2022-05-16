@@ -31,3 +31,20 @@ logging:
       total-size-cap: 20MB
   level:
     root: info
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+        - info
+        - health
+        - metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  info:
+    java:
+      enabled: true
